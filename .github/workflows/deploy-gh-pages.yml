@@ -6,6 +6,9 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  SERVICE_NAME: philharlow.github.io
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -22,7 +25,19 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
 
-      - name: Instal dependencies
+      - name: Cache node modules
+        uses: actions/cache@v2
+        id: cache-node-modules
+        env:
+          cache-name: cache-node-modules
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ env.SERVICE_NAME }}-${{ env.cache-name }}-
+            ${{ runner.os }}-${{ env.SERVICE_NAME }}-
+
+      - name: Install dependencies
         run: |
           npm install --prefer-offline --no-audit
 
@@ -30,8 +45,8 @@ jobs:
         run: |
           npm run build
 
-      - name: Upload to GitHub Pages
+      - name: Copy to GitHub Pages branch
         uses: JamesIves/github-pages-deploy-action@v4.2.2
         with:
           branch: gh-pages
-          folder: dist
+          folder: build
