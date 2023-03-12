@@ -105,8 +105,8 @@ export class BabylonScene {
 
 		let highlightedMesh: BABYLON.AbstractMesh | null;
 		const highlightMaterial = this.getMaterial("#1D3D68");
-		highlightMaterial.emissiveColor = BABYLON.Color3.FromHexString("#1D3D68");
-		scene.onPointerMove = function (evt, pickResult2) {
+		highlightMaterial.emissiveColor = BABYLON.Color3.FromHexString("#182b43");
+		scene.onPointerMove = () => {
 			const pickResult = scene.pickWithBoundingInfo(scene.pointerX, scene.pointerY);
 			if (pickResult?.pickedMesh !== highlightedMesh) {
 				const hasUrl = pickResult?.pickedMesh?.metadata?.url;
