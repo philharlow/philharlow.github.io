@@ -85,7 +85,7 @@ export class BabylonScene {
 		hemiLight.parent = this.sceneRoot;
 
 		// this.addDirectionalLight("DirectionalLight", new BABYLON.Vector3(-0.6, -0.55, -0.8), 1);
-		const pointLight = this.addPointLight("PointLight", new BABYLON.Vector3(0, 10, 0), 0.2);
+		const pointLight = this.addPointLight("PointLight", new BABYLON.Vector3(0, 3, 0), 0.2);
 
 		// Watch for browser/canvas resize events
 		window.addEventListener("resize", () => this.scene.getEngine().resize());
@@ -105,6 +105,7 @@ export class BabylonScene {
 
 		let highlightedMesh: BABYLON.AbstractMesh | null;
 		const highlightMaterial = this.getMaterial("#1D3D68");
+		highlightMaterial.emissiveColor = BABYLON.Color3.FromHexString("#1D3D68");
 		scene.onPointerMove = function (evt, pickResult2) {
 			const pickResult = scene.pickWithBoundingInfo(scene.pointerX, scene.pointerY);
 			if (pickResult?.pickedMesh !== highlightedMesh) {
@@ -120,8 +121,8 @@ export class BabylonScene {
 			const distance = ray.intersectsPlane(groundPlane);
 			if (distance) {
 				const hitPos = ray.origin.add(ray.direction.scale(distance));
-				const goalPos = new BABYLON.Vector3(hitPos.x, 10, hitPos.z);
-				pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.01);
+				const goalPos = new BABYLON.Vector3(hitPos.x, pointLight.position.y, hitPos.z);
+				pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.1);
 			}
 			//camera.alpha = -Math.PI / 2 + (scene.pointerX / scene.getEngine().getRenderWidth() - 0.5) * 0.05;
 			// camera.beta = (scene.pointerY / scene.getEngine().getRenderWidth()) * 0.3;
