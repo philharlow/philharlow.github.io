@@ -68,7 +68,7 @@ export class BabylonScene {
 			mesh.metadata = { url: "https://philsprojects.wordpress.com/" };
 			mesh.material = defaultMat;
 		});
-		this.addText("Github").then((mesh) => {
+		this.addText("GitHub").then((mesh) => {
 			mesh.position.addInPlace(new BABYLON.Vector3(0, 1, -5));
 			mesh.metadata = { url: "https://github.com/philharlow" };
 			mesh.material = defaultMat;
@@ -85,7 +85,8 @@ export class BabylonScene {
 		hemiLight.parent = this.sceneRoot;
 
 		// this.addDirectionalLight("DirectionalLight", new BABYLON.Vector3(-0.6, -0.55, -0.8), 1);
-		const pointLight = this.addPointLight("PointLight", new BABYLON.Vector3(0, 3, 0), 0.2);
+		let goalPos = new BABYLON.Vector3(0, 3, 0);
+		const pointLight = this.addPointLight("PointLight", goalPos, 0.2);
 
 		// Watch for browser/canvas resize events
 		window.addEventListener("resize", () => this.scene.getEngine().resize());
@@ -121,12 +122,16 @@ export class BabylonScene {
 			const distance = ray.intersectsPlane(groundPlane);
 			if (distance) {
 				const hitPos = ray.origin.add(ray.direction.scale(distance));
-				const goalPos = new BABYLON.Vector3(hitPos.x, pointLight.position.y, hitPos.z);
-				pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.1);
+				goalPos = new BABYLON.Vector3(hitPos.x, pointLight.position.y, hitPos.z);
+				pointLight.position = goalPos; // BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.1);
 			}
 			//camera.alpha = -Math.PI / 2 + (scene.pointerX / scene.getEngine().getRenderWidth() - 0.5) * 0.05;
 			// camera.beta = (scene.pointerY / scene.getEngine().getRenderWidth()) * 0.3;
 		};
+
+		// setInterval(() => {
+		// 	pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.1);
+		// }, 30);
 	}
 
 	dispose() {
@@ -174,11 +179,7 @@ export class BabylonScene {
 	};
 
 	addShadowGenerator(light: BABYLON.IShadowLight) {
-		const shadowGenerator = new BABYLON.ShadowGenerator(4096, light);
-		shadowGenerator.usePoissonSampling = true;
-		shadowGenerator.bias = 0; // 0.001;
-		shadowGenerator.normalBias = 0.01;
-		shadowGenerator.transparencyShadow = true;
+		const shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
 		this.shadowGenerators.push(shadowGenerator);
 	}
 
