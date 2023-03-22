@@ -7,7 +7,8 @@ import { BabylonScene } from "./BabylonScene";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 (window as any).earcut = earcut;
 
-interface Settings {
+export interface ThreeDTextSettings {
+	text: string;
 	size?: number;
 	color?: string;
 	hoverColor?: string;
@@ -44,8 +45,7 @@ export class ThreeDText {
 	hovered = false;
 	pressed = false;
 
-	constructor(text: string, settings: Settings, scene: BabylonScene) {
-		this.text = text;
+	constructor(settings: ThreeDTextSettings, scene: BabylonScene) {
 		this.scene = scene;
 
 		this.boundingBox = BABYLON.MeshBuilder.CreateBox("boundingBox", { width: 1, height: 1, depth: 1 }, scene.scene);
@@ -54,6 +54,7 @@ export class ThreeDText {
 		this.underline = BABYLON.MeshBuilder.CreateBox("underline", { width: 1, height: 1, depth: 0.1 }, scene.scene);
 		this.underline.isPickable = false;
 
+		this.text = settings.text;
 		if (settings.alignment) this.alignment = settings.alignment;
 		if (settings.size) this.size = settings.size;
 		if (settings.depth) this.depth = settings.depth;
@@ -63,7 +64,7 @@ export class ThreeDText {
 		if (settings.color) this.setColor(settings.color, settings.hoverColor, settings.pressedColor);
 		else this.setColor("#cccccc");
 
-		this.root = new BABYLON.TransformNode("ThreeDText-" + text, scene.scene);
+		this.root = new BABYLON.TransformNode("ThreeDText-" + this.text, scene.scene);
 		this.root.position = this.position;
 		this.boundingBox.parent = this.root;
 		this.underline.parent = this.root;

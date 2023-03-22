@@ -1,7 +1,7 @@
 import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/inspector";
 import GrainPluginMaterial from "./GrainPluginMaterial";
-import { ThreeDText } from "./ThreeDText";
+import { ThreeDText, ThreeDTextSettings } from "./ThreeDText";
 import { getColorMaterial } from "./BabylonUtils";
 
 export let babylonScene: BabylonScene | undefined = undefined;
@@ -13,6 +13,9 @@ export class BabylonScene {
 	shadowGenerators: BABYLON.ShadowGenerator[] = [];
 	sceneRoot: BABYLON.TransformNode;
 	texts: ThreeDText[] = [];
+	mouseOver = false;
+	pointLight: BABYLON.PointLight;
+	orbitAngle = 0;
 
 	constructor(scene: BABYLON.Scene) {
 		// eslint-disable-next-line @typescript-eslint/no-this-alias
@@ -28,79 +31,24 @@ export class BabylonScene {
 		this.camera.target = new BABYLON.Vector3(0, 0, 0);
 		this.camera.rotation.z = Math.PI;
 
-		let mouseOver = false;
-		this.canvas?.addEventListener("mouseover", () => (mouseOver = true));
-		this.canvas?.addEventListener("mouseout", () => (mouseOver = false));
-
-		this.buildHaxagons();
-
-		this.texts.push(
-			new ThreeDText(
-				"PhilHarlow.com",
-				{
-					position: new BABYLON.Vector3(0, 1, 3),
-					size: 4,
-					color: "#777777",
-					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
-				},
-				this,
-			),
-		);
-
-		const linkColors = {
-			color: "#cccccc",
-			hoverColor: "#3f76be",
-			pressedColor: "#305f9d",
-		};
-		this.texts.push(
-			new ThreeDText(
-				"Projects",
-				{
-					position: new BABYLON.Vector3(0, 1, 0),
-					url: "https://philsprojects.wordpress.com/",
-					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
-					...linkColors,
-				},
-				this,
-			),
-		);
-
-		this.texts.push(
-			new ThreeDText(
-				"GitHub",
-				{
-					position: new BABYLON.Vector3(0, 1, -3),
-					url: "https://github.com/philharlow",
-					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
-					...linkColors,
-				},
-				this,
-			),
-		);
-
-		this.texts.push(
-			new ThreeDText(
-				"LinkedIn",
-				{
-					position: new BABYLON.Vector3(0, 1, -6),
-					url: "https://www.linkedin.com/in/philharlow",
-					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
-					...linkColors,
-				},
-				this,
-			),
-		);
-
 		// Lights
 		const hemiLight = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0.6, 1, 0.8), scene);
 		hemiLight.intensity = 0.8; // Default intensity is 1. Let's dim the light a small amount
 		hemiLight.parent = this.sceneRoot;
 
 		let goalPos = new BABYLON.Vector3(0, 3, 0);
-		const pointLight = this.addPointLight("PointLight", goalPos, 0.2);
+		this.pointLight = this.addPointLight("PointLight", goalPos, 0.2);
+
+		this.buildHaxagons();
+		this.addText();
 
 		// Watch for browser/canvas resize events
 		window.addEventListener("resize", () => this.resized());
+
+		this.canvas?.addEventListener("mouseover", () => (this.mouseOver = true));
+		this.canvas?.addEventListener("mouseout", () => this.touchend());
+		this.canvas?.addEventListener("touchstart", () => (this.mouseOver = true));
+		this.canvas?.addEventListener("touchend", () => this.touchend());
 
 		document.addEventListener("keydown", (event) => {
 			if (event.key === "i") this.toggleInspector();
@@ -108,28 +56,30 @@ export class BabylonScene {
 		});
 
 		const groundPlane = BABYLON.Plane.FromPositionAndNormal(BABYLON.Vector3.Zero(), BABYLON.Vector3.Up()); // Infinite plane at y=0
-		scene.onPointerMove = () => {
+		this.canvas?.addEventListener("pointermove", () => {
 			const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), this.camera);
 			const distance = ray.intersectsPlane(groundPlane);
 			if (distance) {
 				const hitPos = ray.origin.add(ray.direction.scale(distance));
-				goalPos = new BABYLON.Vector3(hitPos.x, pointLight.position.y, hitPos.z);
+				goalPos = new BABYLON.Vector3(hitPos.x, this.pointLight.position.y, hitPos.z);
 			}
-			//camera.alpha = -Math.PI / 2 + (scene.pointerX / scene.getEngine().getRenderWidth() - 0.5) * 0.05;
-			// camera.beta = (scene.pointerY / scene.getEngine().getRenderWidth()) * 0.3;
-		};
+		});
 
 		const lightOrbitRadius = 13;
 		const orbitSpeed = 0.0005;
 
 		scene.beforeRender = () => {
 			const now = Date.now();
-			if (!mouseOver) {
-				const x = Math.sin(orbitSpeed * now) * lightOrbitRadius;
-				const y = Math.cos(orbitSpeed * now) * lightOrbitRadius;
-				goalPos = new BABYLON.Vector3(x, pointLight.position.y, y);
+			if (!this.mouseOver) {
+				this.orbitAngle += orbitSpeed * scene.deltaTime;
+				const x = Math.sin(this.orbitAngle) * lightOrbitRadius;
+				const y = Math.cos(this.orbitAngle) * lightOrbitRadius;
+				goalPos = new BABYLON.Vector3(x, this.pointLight.position.y, y);
 			}
-			pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, mouseOver ? 0.1 : 0.01);
+			const lerpRate = this.mouseOver ? 0.1 : 0.01;
+			this.pointLight.position = BABYLON.Vector3.Lerp(this.pointLight.position, goalPos, lerpRate);
+			//camera.alpha = -Math.PI / 2 + (scene.pointerX / scene.getEngine().getRenderWidth() - 0.5) * 0.05;
+			// camera.beta = (scene.pointerY / scene.getEngine().getRenderWidth()) * 0.3;
 			// for (let i = 0; i < cols * rows; i++) {
 			// 	const xPos = i % cols;
 			// 	const yPos = Math.floor(i / cols);
@@ -172,6 +122,12 @@ export class BabylonScene {
 		this.texts.forEach((text) => text.resized(screenWidth, screenHeight));
 	}
 
+	touchend() {
+		this.mouseOver = false;
+		// this.orbitAngle = Math.cos(this.pointLight.position.x / this.pointLight.position.z) * Math.PI * 2;
+		// console.log(this.orbitAngle);
+	}
+
 	hexagon?: BABYLON.Mesh;
 	buildHaxagons() {
 		const radius = 1;
@@ -212,6 +168,50 @@ export class BabylonScene {
 			if (i < this.hexagon.thinInstanceCount) this.hexagon.thinInstanceSetMatrixAt(i, matrix, i === lastIndex);
 			else this.hexagon.thinInstanceAdd(matrix);
 		}
+	}
+
+	addText() {
+		const philharlow: ThreeDTextSettings = {
+			text: "PhilHarlow.com",
+			position: new BABYLON.Vector3(0, 1, 3),
+			size: 4,
+			color: "#777777",
+			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+		};
+		this.texts.push(new ThreeDText(philharlow, this));
+
+		const linkColors = {
+			color: "#cccccc",
+			hoverColor: "#3f76be",
+			pressedColor: "#305f9d",
+		};
+
+		const projects: ThreeDTextSettings = {
+			text: "Projects",
+			position: new BABYLON.Vector3(0, 1, 0),
+			url: "https://philsprojects.wordpress.com/",
+			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+			...linkColors,
+		};
+		this.texts.push(new ThreeDText(projects, this));
+
+		const github: ThreeDTextSettings = {
+			text: "GitHub",
+			position: new BABYLON.Vector3(0, 1, -3),
+			url: "https://github.com/philharlow",
+			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+			...linkColors,
+		};
+		this.texts.push(new ThreeDText(github, this));
+
+		const linkedIn: ThreeDTextSettings = {
+			text: "LinkedIn",
+			position: new BABYLON.Vector3(0, 1, -6),
+			url: "https://www.linkedin.com/in/philharlow",
+			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+			...linkColors,
+		};
+		this.texts.push(new ThreeDText(linkedIn, this));
 	}
 
 	dispose() {

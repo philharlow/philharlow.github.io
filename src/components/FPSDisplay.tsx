@@ -3,7 +3,7 @@ import styled from "styled-components/macro";
 import { babylonScene } from "../babylon/BabylonScene";
 
 const FPSDiv = styled.div`
-	position: absolute;
+	position: fixed;
 	bottom: 12px;
 	right: 0px;
 	width: 50px;

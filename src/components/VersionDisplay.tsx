@@ -3,7 +3,7 @@ import styled from "styled-components/macro";
 import pjson from "../../package.json";
 
 const VersionDisplayDiv = styled.div`
-	position: absolute;
+	position: fixed;
 	bottom: 0px;
 	right: 0px;
 	width: 50px;
