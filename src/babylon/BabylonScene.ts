@@ -69,7 +69,6 @@ export class BabylonScene {
 		const orbitSpeed = 0.0005;
 
 		scene.beforeRender = () => {
-			const now = Date.now();
 			if (!this.mouseOver) {
 				this.orbitAngle += orbitSpeed * scene.deltaTime;
 				const x = Math.sin(this.orbitAngle) * lightOrbitRadius;

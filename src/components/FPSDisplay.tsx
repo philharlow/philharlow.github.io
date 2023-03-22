@@ -6,7 +6,7 @@ const FPSDiv = styled.div`
 	position: fixed;
 	bottom: 12px;
 	right: 0px;
-	width: 50px;
+	width: 60px;
 	height: 16px;
 	background-color: #6666;
 	color: #ccc6;

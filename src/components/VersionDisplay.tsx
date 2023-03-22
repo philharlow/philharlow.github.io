@@ -6,12 +6,13 @@ const VersionDisplayDiv = styled.div`
 	position: fixed;
 	bottom: 0px;
 	right: 0px;
-	width: 50px;
+	width: 60px;
 	height: 12px;
 	background-color: #6666;
 	color: #ccc6;
 	text-align: center;
 	font-size: 9px;
+	white-space: nowrap;
 `;
 
 const VersionDisplay = () => {
