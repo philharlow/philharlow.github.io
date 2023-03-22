@@ -4,14 +4,15 @@ import { babylonScene } from "../babylon/BabylonScene";
 
 const FPSDiv = styled.div`
 	position: absolute;
-	bottom: 0px;
+	bottom: 12px;
 	right: 0px;
 	width: 50px;
 	height: 16px;
-	color: #ccc6;
 	background-color: #6666;
+	color: #ccc6;
 	text-align: center;
 	font-size: 12px;
+	border-radius: 5px 0 0 0;
 `;
 
 const FPSDisplay = (): React.ReactElement => {

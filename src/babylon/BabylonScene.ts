@@ -1,51 +1,207 @@
 import * as BABYLON from "@babylonjs/core";
 import "@babylonjs/inspector";
-import * as opentype from "opentype.js";
-import { Compiler, Font, TextMeshBuilder } from "babylon.font";
-import earcut from "earcut";
 import GrainPluginMaterial from "./GrainPluginMaterial";
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-(window as any).earcut = earcut;
+import { ThreeDText } from "./ThreeDText";
+import { getColorMaterial } from "./BabylonUtils";
+
+export let babylonScene: BabylonScene | undefined = undefined;
 
 export class BabylonScene {
 	scene: BABYLON.Scene;
+	camera: BABYLON.FreeCamera;
 	canvas: BABYLON.Nullable<HTMLCanvasElement>;
 	shadowGenerators: BABYLON.ShadowGenerator[] = [];
 	sceneRoot: BABYLON.TransformNode;
+	texts: ThreeDText[] = [];
 
 	constructor(scene: BABYLON.Scene) {
+		// eslint-disable-next-line @typescript-eslint/no-this-alias
+		babylonScene = this;
 		this.scene = scene;
-		// this.scene.useRightHandedSystem = true;
+
 		this.scene.clearColor = new BABYLON.Color4(0.008, 0.012, 0.02, 1);
 		const engine = this.scene.getEngine();
 		this.canvas = engine.getRenderingCanvas();
 		this.sceneRoot = new BABYLON.TransformNode("SceneRoot", this.scene);
 
-		const camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, 0, 50, BABYLON.Vector3.Zero());
-		// camera.attachControl(this.canvas, true);
+		this.camera = new BABYLON.FreeCamera("Camera", new BABYLON.Vector3(0, 50, 0), scene);
+		this.camera.target = new BABYLON.Vector3(0, 0, 0);
+		this.camera.rotation.z = Math.PI;
 
-		const sqrt3 = Math.sqrt(3);
+		let mouseOver = false;
+		this.canvas?.addEventListener("mouseover", () => (mouseOver = true));
+		this.canvas?.addEventListener("mouseout", () => (mouseOver = false));
 
+		this.buildHaxagons();
+
+		this.texts.push(
+			new ThreeDText(
+				"PhilHarlow.com",
+				{
+					position: new BABYLON.Vector3(0, 1, 3),
+					size: 4,
+					color: "#777777",
+					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+				},
+				this,
+			),
+		);
+
+		const linkColors = {
+			color: "#cccccc",
+			hoverColor: "#3f76be",
+			pressedColor: "#305f9d",
+		};
+		this.texts.push(
+			new ThreeDText(
+				"Projects",
+				{
+					position: new BABYLON.Vector3(0, 1, 0),
+					url: "https://philsprojects.wordpress.com/",
+					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+					...linkColors,
+				},
+				this,
+			),
+		);
+
+		this.texts.push(
+			new ThreeDText(
+				"GitHub",
+				{
+					position: new BABYLON.Vector3(0, 1, -3),
+					url: "https://github.com/philharlow",
+					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+					...linkColors,
+				},
+				this,
+			),
+		);
+
+		this.texts.push(
+			new ThreeDText(
+				"LinkedIn",
+				{
+					position: new BABYLON.Vector3(0, 1, -6),
+					url: "https://www.linkedin.com/in/philharlow",
+					onMeshCreated: (mesh) => this.addShadowCaster(mesh),
+					...linkColors,
+				},
+				this,
+			),
+		);
+
+		// Lights
+		const hemiLight = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0.6, 1, 0.8), scene);
+		hemiLight.intensity = 0.8; // Default intensity is 1. Let's dim the light a small amount
+		hemiLight.parent = this.sceneRoot;
+
+		let goalPos = new BABYLON.Vector3(0, 3, 0);
+		const pointLight = this.addPointLight("PointLight", goalPos, 0.2);
+
+		// Watch for browser/canvas resize events
+		window.addEventListener("resize", () => this.resized());
+
+		document.addEventListener("keydown", (event) => {
+			if (event.key === "i") this.toggleInspector();
+			if (event.key === "Escape") this.hideInspector();
+		});
+
+		const groundPlane = BABYLON.Plane.FromPositionAndNormal(BABYLON.Vector3.Zero(), BABYLON.Vector3.Up()); // Infinite plane at y=0
+		scene.onPointerMove = () => {
+			const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), this.camera);
+			const distance = ray.intersectsPlane(groundPlane);
+			if (distance) {
+				const hitPos = ray.origin.add(ray.direction.scale(distance));
+				goalPos = new BABYLON.Vector3(hitPos.x, pointLight.position.y, hitPos.z);
+			}
+			//camera.alpha = -Math.PI / 2 + (scene.pointerX / scene.getEngine().getRenderWidth() - 0.5) * 0.05;
+			// camera.beta = (scene.pointerY / scene.getEngine().getRenderWidth()) * 0.3;
+		};
+
+		const lightOrbitRadius = 13;
+		const orbitSpeed = 0.0005;
+
+		scene.beforeRender = () => {
+			const now = Date.now();
+			if (!mouseOver) {
+				const x = Math.sin(orbitSpeed * now) * lightOrbitRadius;
+				const y = Math.cos(orbitSpeed * now) * lightOrbitRadius;
+				goalPos = new BABYLON.Vector3(x, pointLight.position.y, y);
+			}
+			pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, mouseOver ? 0.1 : 0.01);
+			// for (let i = 0; i < cols * rows; i++) {
+			// 	const xPos = i % cols;
+			// 	const yPos = Math.floor(i / cols);
+			// 	const x = xSpacing * xPos;
+			// 	const y = yPos * ySpacing + (xPos % 2) * 0.5 * ySpacing;
+			// 	const z = Math.sin(0.4 * (xPos - yPos) + -0.002 * now) * 0.5;
+			// 	const matrix = BABYLON.Matrix.Translation(x - cols * 0.5 * xSpacing, z, y - rows * 0.5 * ySpacing);
+			// 	hexagon.thinInstanceSetMatrixAt(i, matrix, i + 1 === cols * rows);
+			// }
+
+			// camera.position = new BABYLON.Vector3(-0.2 * pointLight.position.x, 50, 0.2 * pointLight.position.z);
+			// camera.setTarget(BABYLON.Vector3.Zero());
+			// camera.rotation.z = Math.PI;
+
+			// const map = (value: number, start1: number, stop1: number, start2: number, stop2: number) =>
+			// 	Math.max(0, Math.min(1, (value - start1) / (stop1 - start1))) * (stop2 - start2) + start2;
+
+			// for (let i = 0; i < cols * rows; i++) {
+			// 	const xPos = i % cols;
+			// 	const yPos = Math.floor(i / cols);
+			// 	const x = xSpacing * xPos - cols * 0.5 * xSpacing;
+			// 	const y = yPos * ySpacing + (xPos % 2) * 0.5 * ySpacing - rows * 0.5 * ySpacing;
+			// 	const dist = Math.sqrt((x - pointLight.position.x) ** 2 + (y - pointLight.position.z) ** 2);
+			// 	const z = map(dist, 0, 10, -1, 0.9);
+			// 	const matrix = BABYLON.Matrix.Translation(x, z, y);
+			// 	hexagon.thinInstanceSetMatrixAt(i, matrix, i + 1 === cols * rows);
+			// }
+		};
+
+		this.resized();
+	}
+
+	resized() {
+		this.scene.getEngine().resize();
+		this.buildHaxagons();
+		const aspect = this.canvas ? this.canvas.width / this.canvas.height : 1;
+		const screenHeight = 2 * Math.tan(this.camera.fov / 2) * this.camera.position.y;
+		const screenWidth = screenHeight * aspect;
+
+		this.texts.forEach((text) => text.resized(screenWidth, screenHeight));
+	}
+
+	hexagon?: BABYLON.Mesh;
+	buildHaxagons() {
 		const radius = 1;
 		const width = 2 * radius;
+		const sqrt3 = Math.sqrt(3);
 		const height = sqrt3 * radius;
 		const xSpacing = width * 0.75 * 1.01;
 		const ySpacing = height * 1.01;
 
-		const shape: BABYLON.Vector3[] = [];
-		for (let i = 0; i < 6; i++) {
-			const rot = (i * Math.PI) / 3;
-			const point = new BABYLON.Vector3(radius * Math.cos(rot), 0, radius * Math.sin(rot));
-			shape.push(point);
+		if (!this.hexagon) {
+			const shape: BABYLON.Vector3[] = [];
+			for (let i = 0; i < 6; i++) {
+				const rot = (i * Math.PI) / 3;
+				const point = new BABYLON.Vector3(radius * Math.cos(rot), 0, radius * Math.sin(rot));
+				shape.push(point);
+			}
+			this.hexagon = BABYLON.MeshBuilder.ExtrudePolygon("Hexagon", { shape, depth: 1 }, this.scene);
+			this.hexagon.material = getColorMaterial("#333333");
+			this.hexagon.receiveShadows = true;
+			this.addShadowCaster(this.hexagon);
+			new GrainPluginMaterial(this.hexagon.material); // Fix for color banding
 		}
 
-		const hexagon = BABYLON.MeshBuilder.ExtrudePolygon("polygon", { shape, depth: 1 }, scene);
-		hexagon.material = this.getMaterial("#333333");
-		hexagon.receiveShadows = true;
-		new GrainPluginMaterial(hexagon.material); // Fix for color banding
+		const aspect = this.canvas ? this.canvas.width / this.canvas.height : 1;
+		const screenHeight = 2 * Math.tan(this.camera.fov / 2) * this.camera.position.y;
+		const screenWidth = screenHeight * aspect;
 
-		const cols = 60;
-		const rows = 26;
+		const cols = Math.ceil(screenWidth / xSpacing / 4) * 4 + 1;
+		const rows = Math.ceil(screenHeight / ySpacing / 4) * 4 + 1;
+		const lastIndex = cols * rows - 1;
 		for (let i = 0; i < cols * rows; i++) {
 			const xPos = i % cols;
 			const yPos = Math.floor(i / cols);
@@ -53,85 +209,9 @@ export class BabylonScene {
 			const y = yPos * ySpacing + (xPos % 2) * 0.5 * ySpacing;
 			const z = 0.5;
 			const matrix = BABYLON.Matrix.Translation(x - cols * 0.5 * xSpacing, z, y - rows * 0.5 * ySpacing);
-			hexagon.thinInstanceAdd(matrix);
+			if (i < this.hexagon.thinInstanceCount) this.hexagon.thinInstanceSetMatrixAt(i, matrix, i === lastIndex);
+			else this.hexagon.thinInstanceAdd(matrix);
 		}
-
-		//const map = (val: number, min: number, max: number) => Math.min(Math.max(val, 0), 1) * (max - min) + min;
-		const defaultMat = this.getMaterial("#cccccc");
-		this.addText("PhilHarlow.com", 4).then((mesh) => {
-			//mesh.scaling = BABYLON.Vector3.One().scale(map(window.innerWidth, 0.5, 2));
-			mesh.position.addInPlace(new BABYLON.Vector3(0, 1, 1));
-			mesh.material = this.getMaterial("#777777");
-		});
-		this.addText("Projects").then((mesh) => {
-			mesh.position.addInPlace(new BABYLON.Vector3(0, 1, -2));
-			mesh.metadata = { url: "https://philsprojects.wordpress.com/" };
-			mesh.material = defaultMat;
-		});
-		this.addText("GitHub").then((mesh) => {
-			mesh.position.addInPlace(new BABYLON.Vector3(0, 1, -5));
-			mesh.metadata = { url: "https://github.com/philharlow" };
-			mesh.material = defaultMat;
-		});
-		this.addText("LinkedIn").then((mesh) => {
-			mesh.position.addInPlace(new BABYLON.Vector3(0, 1, -8));
-			mesh.metadata = { url: "https://www.linkedin.com/in/philharlow" };
-			mesh.material = defaultMat;
-		});
-
-		// Lights
-		const hemiLight = new BABYLON.HemisphericLight("HemiLight", new BABYLON.Vector3(0.6, 1, 0.8), scene);
-		hemiLight.intensity = 0.8; // Default intensity is 1. Let's dim the light a small amount
-		hemiLight.parent = this.sceneRoot;
-
-		// this.addDirectionalLight("DirectionalLight", new BABYLON.Vector3(-0.6, -0.55, -0.8), 1);
-		let goalPos = new BABYLON.Vector3(0, 3, 0);
-		const pointLight = this.addPointLight("PointLight", goalPos, 0.2);
-
-		// Watch for browser/canvas resize events
-		window.addEventListener("resize", () => this.scene.getEngine().resize());
-
-		document.addEventListener("keydown", (event) => {
-			if (event.key === "i") this.toggleInspector();
-			if (event.key === "Escape") this.hideInspector();
-		});
-
-		scene.onPointerDown = function (evt, pickResult) {
-			if (pickResult.pickedMesh?.metadata?.url) {
-				window.location.href = pickResult.pickedMesh.metadata.url;
-			}
-		};
-
-		const groundPlane = BABYLON.Plane.FromPositionAndNormal(BABYLON.Vector3.Zero(), BABYLON.Vector3.Up()); // Infinite plane at y=0
-
-		let highlightedMesh: BABYLON.AbstractMesh | null;
-		const highlightMaterial = this.getMaterial("#1D3D68");
-		highlightMaterial.emissiveColor = BABYLON.Color3.FromHexString("#182b43");
-		scene.onPointerMove = () => {
-			const pickResult = scene.pickWithBoundingInfo(scene.pointerX, scene.pointerY);
-			if (pickResult?.pickedMesh !== highlightedMesh) {
-				const hasUrl = pickResult?.pickedMesh?.metadata?.url;
-				document.body.style.cursor = hasUrl ? "pointer" : "auto";
-
-				if (highlightedMesh && highlightedMesh.metadata?.url) highlightedMesh.material = defaultMat;
-				if (pickResult?.pickedMesh && hasUrl) pickResult.pickedMesh.material = highlightMaterial;
-				highlightedMesh = pickResult?.pickedMesh || null;
-			}
-
-			const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), camera);
-			const distance = ray.intersectsPlane(groundPlane);
-			if (distance) {
-				const hitPos = ray.origin.add(ray.direction.scale(distance));
-				goalPos = new BABYLON.Vector3(hitPos.x, pointLight.position.y, hitPos.z);
-				pointLight.position = goalPos; // BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.1);
-			}
-			//camera.alpha = -Math.PI / 2 + (scene.pointerX / scene.getEngine().getRenderWidth() - 0.5) * 0.05;
-			// camera.beta = (scene.pointerY / scene.getEngine().getRenderWidth()) * 0.3;
-		};
-
-		// setInterval(() => {
-		// 	pointLight.position = BABYLON.Vector3.Lerp(pointLight.position, goalPos, 0.1);
-		// }, 30);
 	}
 
 	dispose() {
@@ -158,25 +238,6 @@ export class BabylonScene {
 		this.addShadowGenerator(directionalLight);
 		return directionalLight;
 	}
-
-	addText = async (text: string, size = 2, depth = 0.5) => {
-		const compiler = await Compiler.Build();
-		const font = await Font.Install("assets/Design System A 900.ttf", compiler, opentype);
-		const builder = new TextMeshBuilder(BABYLON, earcut);
-		const mesh = builder.create({ font, text, size, depth, eps: 0.001, ppc: 2 }, this.scene) as BABYLON.Mesh;
-		mesh.name = text;
-		mesh.position.x -= mesh.getBoundingInfo().boundingBox.extendSize.x; // Center text
-		this.addShadowCaster(mesh);
-		return mesh;
-	};
-
-	getMaterial = (color: string) => {
-		const mat = new BABYLON.StandardMaterial("mat-" + color, this.scene);
-		mat.diffuseColor = BABYLON.Color3.FromHexString(color);
-		mat.backFaceCulling = false;
-		mat.specularColor = BABYLON.Color3.Black();
-		return mat;
-	};
 
 	addShadowGenerator(light: BABYLON.IShadowLight) {
 		const shadowGenerator = new BABYLON.ShadowGenerator(1024, light);
@@ -208,8 +269,6 @@ export class BabylonScene {
 		}
 	};
 }
-
-export let babylonScene: BabylonScene | undefined = undefined;
 
 export function createScene(scene: BABYLON.Scene): BabylonScene {
 	destroyScene();

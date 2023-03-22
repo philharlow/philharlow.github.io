@@ -36,6 +36,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ env.SERVICE_NAME }}-${{ env.cache-name }}-
             ${{ runner.os }}-${{ env.SERVICE_NAME }}-
+            
+      - name: Extract short SHA
+        id: short_sha
+        run: echo "::set-output name=sha8::$(echo ${GITHUB_SHA} | cut -c1-8)"
 
       - name: Install dependencies
         run: |
@@ -44,6 +48,8 @@ jobs:
       - name: Webpack build
         run: |
           npm run build
+        env:
+          REACT_APP_BUILD: ${{ steps.short_sha.outputs.sha8 }}
 
       - name: Copy to GitHub Pages branch
         uses: JamesIves/github-pages-deploy-action@v4.2.2

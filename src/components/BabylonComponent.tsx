@@ -4,6 +4,7 @@ import styled from "styled-components/macro";
 import React from "react";
 import { createScene, destroyScene } from "../babylon/BabylonScene";
 import FPSDisplay from "./FPSDisplay";
+import VersionDisplay from "./VersionDisplay";
 
 const CanvasDiv = styled.div`
 	position: relative;
@@ -47,6 +48,7 @@ const BabylonScene = () => {
 			<CanvasDiv>
 				<BabylonCanvas antialias onSceneReady={(scene) => createScene(scene)} id="babylon-canvas" />
 				<FPSDisplay />
+				<VersionDisplay />
 			</CanvasDiv>
 		</BabylonSceneDiv>
 	);
