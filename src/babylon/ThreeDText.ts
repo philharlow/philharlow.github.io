@@ -45,6 +45,8 @@ export class ThreeDText {
 	hovered = false;
 	pressed = false;
 
+	goalHoverScale = 1;
+
 	constructor(settings: ThreeDTextSettings, scene: BabylonScene) {
 		this.scene = scene;
 
@@ -73,6 +75,11 @@ export class ThreeDText {
 		// this.underline.visibility = 0;
 
 		this.createTextMesh();
+
+		scene.scene.onBeforeRenderObservable.add(() => {
+			this.root.scaling.x += (this.goalHoverScale - this.root.scaling.x) * 0.1;
+			this.root.scaling.z += (this.goalHoverScale - this.root.scaling.z) * 0.1;
+		});
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -143,6 +150,8 @@ export class ThreeDText {
 		if (this.mesh) this.mesh.material = mat;
 		this.underline.material = mat;
 		this.underline.visibility = this.hovered ? 1 : 0;
+
+		this.goalHoverScale = this.hovered ? 1.1 : 1;
 	}
 
 	setPosition(position: BABYLON.Vector3) {

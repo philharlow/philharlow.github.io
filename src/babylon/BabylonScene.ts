@@ -40,7 +40,7 @@ export class BabylonScene {
 		this.pointLight = this.addPointLight("PointLight", goalPos, 0.2);
 
 		this.buildHaxagons();
-		this.addText();
+		this.buildText();
 
 		// Watch for browser/canvas resize events
 		window.addEventListener("resize", () => this.resized());
@@ -169,15 +169,14 @@ export class BabylonScene {
 		}
 	}
 
-	addText() {
-		const philharlow: ThreeDTextSettings = {
+	buildText() {
+		this.addText({
 			text: "PhilHarlow.com",
 			position: new BABYLON.Vector3(0, 1, 3),
 			size: 4,
 			color: "#777777",
 			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
-		};
-		this.texts.push(new ThreeDText(philharlow, this));
+		});
 
 		const linkColors = {
 			color: "#cccccc",
@@ -185,32 +184,34 @@ export class BabylonScene {
 			pressedColor: "#305f9d",
 		};
 
-		const projects: ThreeDTextSettings = {
+		this.addText({
 			text: "Projects",
 			position: new BABYLON.Vector3(0, 1, 0),
 			url: "https://philsprojects.wordpress.com/",
 			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
 			...linkColors,
-		};
-		this.texts.push(new ThreeDText(projects, this));
+		});
 
-		const github: ThreeDTextSettings = {
+		this.addText({
 			text: "GitHub",
 			position: new BABYLON.Vector3(0, 1, -3),
 			url: "https://github.com/philharlow",
 			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
 			...linkColors,
-		};
-		this.texts.push(new ThreeDText(github, this));
+		});
 
-		const linkedIn: ThreeDTextSettings = {
+		this.addText({
 			text: "LinkedIn",
 			position: new BABYLON.Vector3(0, 1, -6),
 			url: "https://www.linkedin.com/in/philharlow",
 			onMeshCreated: (mesh) => this.addShadowCaster(mesh),
 			...linkColors,
-		};
-		this.texts.push(new ThreeDText(linkedIn, this));
+		});
+	}
+
+	addText(settings: ThreeDTextSettings) {
+		const text = new ThreeDText(settings, this);
+		this.texts.push(text);
 	}
 
 	dispose() {
